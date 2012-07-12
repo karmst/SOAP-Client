@@ -1,1 +1,57 @@
-This is a Java SOAP client for use with Novell IDM.
+This is a Java SOAP client, primarily for use with Novell IDM.
+
+$$ Github Version History $$
+
+12-07-2012	This new updated version uses the JCommander 1.27 Java API to parse the command line parameters.
+			Therefore, the JCommander JAR must be downloaded and placed in the LIB directory before compilation.
+			Before deployment of the complied JAR, you can use one-jar to put the JCommander JAR 'inside' the 'soap' JAR.
+
+			Homepage:	http://jcommander.org/
+			Download:	http://repo1.maven.org/maven2/com/beust/jcommander/1.27/jcommander-1.27.jar
+
+12-07-2012	Bug fixed whereby the replacement tokens would incorrectly parse if one of them contained a , (comma)
+
+## How to use ##
+################
+Usage: <main class> [options] parameters
+  Options:
+        --debug     Used to debug the program
+        --encrypt   Encrypt this value using the Key
+        --help      print this message
+                    Default: false
+  *     --key       Key used for encryption
+        --props     Location of the Properties file
+        --replace   Tokens for which to search
+
+## To encrypt a password ##
+###########################
+java -jar soap.jar --key KeyLengthSixteen --encrypt myPassword
+
+## To send a document to the SOAP web service ##
+################################################
+java -jar soap.jar --props /home/karmst/props.conf --replace ##User##~<replacement User is here>
+
+## The Properties file ##
+#########################
+A sample file would look like this:
+
+SHIM_URL = http://192.168.174.146:8180/IDMProv/provisioning/service
+INPUT_FILE = /home/idm/soap.xml
+PASSWORD = lfWOXY5wmMgwY5FI5BZhJA==
+USERNAME = cn=UAAdmin,ou=Users,ou=Admin,o=Belkast
+ARGUMENT_DELIMITER = ~
+SSL = false
+
+## The SOAP document ##
+#######################
+A sample SOAP document would look like this:
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://www.novell.com/provisioning/service">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ser:getProcessesByInitiatorRequest>
+         <!--Optional:-->
+         <ser:arg0>##User##</ser:arg0>
+      </ser:getProcessesByInitiatorRequest>
+   </soapenv:Body>
+</soapenv:Envelope>

@@ -1,0 +1,9 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://www.novell.com/provisioning/service">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ser:getProcessesByInitiatorRequest>
+         <!--Optional:-->
+         <ser:arg0>##User##</ser:arg0>
+      </ser:getProcessesByInitiatorRequest>
+   </soapenv:Body>
+</soapenv:Envelope>
