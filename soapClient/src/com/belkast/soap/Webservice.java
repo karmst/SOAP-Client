@@ -25,9 +25,13 @@
  {
      private static Boolean varDebug;
      private static String varPassword;
+     private static String programStatus;
+
+     private static String NEW_STATUS = null;
      
    public static void main(String[] args) throws Exception
    {
+       
        try
        {
            soapResponse(args);      
@@ -61,21 +65,22 @@
          jct.usage();
      }
 
-    varDebug = Boolean.parseBoolean(commandLine.debug);
-    System.out.println("<debug>Debug is: " + varDebug.toString() + "</debug>");
-
     if (commandLine.varKey != null && commandLine.varEncrypt != null)
         {
             varPassword = encryptPassword(commandLine.varKey, commandLine.varEncrypt);
-            return "Complete";
+            return "";
         }
     
     if (commandLine.varPropertiesFile == null)
         {
-            System.out.println("Nothing to do");
-            return "Complete";
+//  System.out.println("Nothing to do");            
+        programStatus = "Properties file not valid";
+        return programStatus;
         }
     
+    varDebug = Boolean.parseBoolean(commandLine.debug);
+    System.out.println("<debug>Debug is: " + varDebug.toString() + "</debug>");
+
     try
         {
             configFilePath = new File(commandLine.varPropertiesFile);
@@ -83,7 +88,10 @@
         }
     catch (IOException e)
         {
-        throw new RuntimeException("Properties file was not found", e);
+//  e.printStackTrace();
+//  throw new RuntimeException("Properties file was not found", e);
+        programStatus = e.toString();
+        return programStatus;
         }
 
     String varDelimiter = readProperty(varDebug, configFilePath, "ARGUMENT_DELIMITER");
@@ -103,23 +111,39 @@
     }
     catch (Exception e)
     {
-      throw new Exception(e);
+//        e.printStackTrace();
+//      throw new Exception(e);
+        programStatus = e.toString();
+        return programStatus;
     }
 
     String varUseSSL = readProperty(varDebug, configFilePath, "SSL");
 
     if ((varURL.equalsIgnoreCase("")) || (varInputFile.equalsIgnoreCase("")))
     {
-      throw new Exception("Properties file is corrupt: " + configFilePath.toString());
+        programStatus = "Properties file " + configFilePath.toString() + " is not valid";
+        return programStatus;
+//      throw new Exception("Properties file is corrupt: " + configFilePath.toString());
     }
 
     System.out.println();
-    String response = writeMessage(varUsername, varPassword, varURL, varRequestType, varInputFile, varUseSSL, hashMap);
 
-    System.out.println();
-    System.out.println("<debug>Response from Web Service: " + response + "</debug>");
-    return response;
-  }
+    String varDocument = readTextFile(varInputFile, hashMap);
+    if (varDocument.length() > 0)
+    {
+        String response = writeMessage(varUsername, varPassword, varURL, varRequestType, varInputFile, varUseSSL, hashMap, varDocument.getBytes());
+        System.out.println();
+        System.out.println("<debug>Response from Web Service: " + response + "</debug>");
+        
+        if (programStatus == null)
+        {
+                return "WS response: " + response;
+        }            
+    }
+
+    return programStatus;
+
+   }
 
   private static String debugMessage(Boolean varLevel, String varMessage)
   {
@@ -177,7 +201,8 @@
       }
       catch(Exception e)
       {
-          throw (e);
+          e.printStackTrace();
+          //          throw (e);
       }
   
       return varPasswordIn.toString();          
@@ -200,7 +225,8 @@
     }
     catch (Exception e)
     {
-        throw (e);
+        e.printStackTrace();
+//        throw (e);
     }
     return propertyValue;
   }
@@ -223,7 +249,9 @@
     }
     catch (IOException e)
     {
-        throw (e);
+        // throw (e);
+        e.printStackTrace();
+        return ("");
 //      System.out.println("Exception: " + e.toString());
     }
 
@@ -242,55 +270,55 @@
     return returnString;
   }
 
-  public static String writeMessage(String username, String password, String varURL, String varRequestType, String varInputFile, String varUseSSL, HashMap hashMap)
-    throws Exception
-  {
+  public static String writeMessage(String username, String password, String varURL, String varRequestType, String varInputFile, String varUseSSL, HashMap hashMap, byte[] document) throws Exception
+    {
+        programStatus = NEW_STATUS;
 
-      StringBuilder response = new StringBuilder(500);
-
+    StringBuilder response = new StringBuilder(500);
     String SOAPAction = varRequestType;
     String login = username + ":" + password;
     String encoding = Base64.encodeString(login);
 
     URL url = new URL(varURL);
-    String varDocument = readTextFile(varInputFile, hashMap);
-    byte[] b = varDocument.getBytes();
 
     try
     {
-    System.out.println("\n## Sending SOAP Document ##");
-    URLConnection connection = url.openConnection();
-      connection.setRequestProperty("Authorization", "Basic " + encoding);
-      HttpURLConnection httpConn = (HttpURLConnection)connection;
-      ByteArrayOutputStream outstr = new ByteArrayOutputStream();
+        System.out.println("\n## Sending SOAP Document ##");
+        URLConnection connection = url.openConnection();
+        connection.setRequestProperty("Authorization", "Basic " + encoding);
+        HttpURLConnection httpConn = (HttpURLConnection)connection;
+        ByteArrayOutputStream outstr = new ByteArrayOutputStream();
 
-      httpConn.setRequestProperty("Content-Length", String.valueOf(b.length));
-      httpConn.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
-      httpConn.setRequestProperty("SOAPAction", SOAPAction);
-      httpConn.setRequestMethod("POST");
-      httpConn.setDoOutput(true);
-      httpConn.setDoInput(true);
+        httpConn.setRequestProperty("Content-Length", String.valueOf(document.length));
+        httpConn.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
+        httpConn.setRequestProperty("SOAPAction", SOAPAction);
+        httpConn.setRequestMethod("POST");
+        httpConn.setDoOutput(true);
+        httpConn.setDoInput(true);
 
-      OutputStream out = httpConn.getOutputStream();
-      out.write(b);
-      out.close();
+        OutputStream out = httpConn.getOutputStream();
+        out.write(document);
+        out.close();
 
-      InputStreamReader ireader = new InputStreamReader(httpConn.getInputStream());
+        InputStreamReader ireader = new InputStreamReader(httpConn.getInputStream());
 
-      BufferedReader in = new BufferedReader(ireader);
-      String inputLine;
-      while ((inputLine = in.readLine()) != null)
-      {
-        response.append(inputLine);
-      }
+        BufferedReader in = new BufferedReader(ireader);
+        String inputLine;
+        while ((inputLine = in.readLine()) != null)
+            {
+                response.append(inputLine);
+            }
 
-      in.close();
-      httpConn.disconnect();
+        in.close();
+        httpConn.disconnect();
     }
     catch (Exception e)
-    {
-        throw (e);
-    }
+        {
+//            throw (e);
+        e.printStackTrace();
+        programStatus = e.toString();
+        return programStatus;
+        }
 
     return response.toString();
   }
